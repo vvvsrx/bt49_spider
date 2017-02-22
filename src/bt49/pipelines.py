@@ -43,6 +43,11 @@ class MongoDBPipeline(object):
                 {"_id": itemDic[settings['MONGODB_UNIQ_KEY']]})
             if model is None:
                 self.collection.insert_one(itemDic)
+        elif itemTypeName == 'ThreadFile':
+            model = self.collection.find_one(
+                {"url": itemDic["url"]})
+            if model is None:
+                self.collection.insert_one(itemDic)
         else:
             self.collection.insert_one(itemDic)
 

@@ -21,7 +21,7 @@ BOT_NAME = 'bt49'
 SPIDER_MODULES = ['bt49.spiders']
 NEWSPIDER_MODULE = 'bt49.spiders'
 
-MONGODB_SERVER = '127.0.0.1'
+MONGODB_SERVER = 'mongodb'
 MONGODB_PORT = 27017
 MONGODB_DB = 'bt49_com'
 MONGODB_UNIQ_KEY = '_id'
@@ -40,7 +40,7 @@ DIR_PATH = 'download/files'
 # Configure a delay for requests for the same website (default: 0)
 # See http://scrapy.readthedocs.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
-DOWNLOAD_DELAY = 2
+DOWNLOAD_DELAY = 3
 # The download delay setting will honor only one of:
 #CONCURRENT_REQUESTS_PER_DOMAIN = 16
 #CONCURRENT_REQUESTS_PER_IP = 16
@@ -113,6 +113,8 @@ import time
 LOG_ENABLED = True
 LOG_ENCODING = 'utf-8'
 #LOG_LEVEL = 'ERROR'
-LOG_LEVEL = 'WARNING'
+LOG_LEVEL = 'INFO'
 LOG_STDOUT = False
+if not os.path.exists('logs/error/'):
+    os.makedirs('logs/error/')
 LOG_FILE = 'logs/error/' + datetime.datetime.now().strftime("%Y-%m-%d.%H") + '.log'

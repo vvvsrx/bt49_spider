@@ -14,6 +14,7 @@ import sys
 import os
 from os.path import dirname
 from bt49.items import *
+import logging
 
 
 path = dirname(dirname(dirname(os.path.abspath(os.path.dirname(__file__)))))
@@ -25,21 +26,30 @@ class BT49Spider(CrawlSpider):
     allowed_domains = ["87lou.com"]
     start_urls = [
         "http://www.87lou.com/forum-%d-1.html" % d for d in range(2, 104)
+        # "http://www.87lou.com"
+        #"http://www.87lou.com/thread-172442-1-1.html"
     ]
     rules = (
-        Rule(LinkExtractor(allow=('/thread-\d+-1-1.html', )),
-             callback='parse_page', follow=True),
+        # Rule(LinkExtractor(allow=('/thread-\d+-1-1.html', )),
+        #      callback='parse_page', follow=True),
+        # Rule(LinkExtractor(allow=('/forum-\d*-\d*.html', )),
+        #      callback='parse_forum', follow=True),
     )
 
+    
+    def __init__(self, name=None, **kwargs):
+        pass
+
     def start_requests(self):
+        logging.info('start')
         return [Request("http://www.87lou.com/member.php?mod=logging&action=login", meta={'cookiejar': 1}, callback=self.post_login)]
 
     def post_login(self, response):
-        print 'Preparing login'
+        logging.info('Preparing login')
         hxs = Selector(response)
         actionUrl = hxs.xpath('//form[@name="login"]/@action').extract()[0]
         formhash = hxs.xpath('//input[@name="formhash"]/@value').extract()[0]
-        print formhash
+        logging.info(formhash)
         return [FormRequest.from_response(response, formname="login",
                                           meta={'cookiejar': response.meta[
                                               'cookiejar']},
@@ -76,40 +86,64 @@ class BT49Spider(CrawlSpider):
         for url in self.start_urls:
             yield Request(url, meta={'cookiejar': response.meta['cookiejar']})
 
-    def parse_List(self, response):
+    def parse(self, response):
         hxs = Selector(response)
-        
-        pass
+        logging.info('forum  ----->' + response.url)
+        #tbody[re:test(@id, "stickthread_\d*")]/tr/th/
+        urls = hxs.xpath('//a/@href').extract()
 
-    def parse_page(self, response):
-        print '############################# Start #####################################'
+        #print 'urls'
+        #print urls
+        pattern = re.compile('http://www.87lou.com/thread-\d+-1-1.html')
+        pattern2 = re.compile('http://www.87lou.com/forum-\d*-\d*.html')
+
+        for url in urls:
+            m = pattern.match(url)
+            if m is not None:
+                #print 'Strart thread --->' + m.group()
+                yield Request(m.group(), callback=self.parse_thread, meta={'cookiejar': response.meta['cookiejar']})
+
+            m2 = pattern2.match(url)
+            if m2 is not None:
+                #print 'Strart forum --->' + m2.group()
+                yield Request(m2.group(), callback=self.parse, meta={'cookiejar': response.meta['cookiejar']})
+            #print 'group'
+
+    def parse_thread(self, response):
+        logging.info('############################# Start #####################################')
         threadModel = ThreadItem()
-        print '-------------thread---------------'
+        logging.info('-------------thread---------------')
         pattern = re.compile(r'\d+')
         thread = pattern.findall(response.url)[1]
-        print thread
+        logging.info(thread)
         threadModel["threadId"] = thread
+        logging.info(response.body)
         hxs = Selector(response)
         titles = hxs.xpath('//h1/a/text()').extract()
-        print '-------------titles---------------'
+        logging.info('-------------titles---------------')
         for title in titles:
-            print title
+            logging.info(title)
         threadModel["titles"] = titles
         breadCrumbs = hxs.xpath('//*[@id="pt"]/div/a/text()').extract()
         breadCrumbs = breadCrumbs[2:len(breadCrumbs) - 1]
         threadModel["breadCrumbs"] = breadCrumbs
         locks = hxs.xpath('///div[@class="locked"]/text()').extract()
         if len(locks) > 0:
-            print '-------------locks---------------'
+            logging.info('-------------locks---------------')
             for lock in locks:
-                print lock
+                logging.info(lock)
         #files = hxs.xpath('//span[re:test(@id, "attach_\d*")]/a/@href').extract()
         showhides = hxs.xpath('//div[@class="showhide"]')
         files = []
         files = hxs.xpath('//div[@class="showhide"]//a/@href').extract()
-        for i, f in enumerate(files):
-            if f == 'javascript:;':
-                del files[i]
+        #for i, f in enumerate(files):
+        #    if f == 'javascript:;':
+        #        del files[i]
+        
+
+        for i in range(len(files)-1, -1, -1):
+            if files[i] == 'javascript:;':
+                files.pop(i)
 
         if len(files) > 0:
             pass
@@ -133,6 +167,22 @@ class BT49Spider(CrawlSpider):
                                 files.append(linkTag.xpath(
                                     '@href').extract()[0])
 
+        #找所有的link
+        startStrings = ('thunder','ed2k','magnet','magnet','https://pan.baidu.com','http://pan.baidu.com','http://www.87lou.com/forum.php?mod=attachment')
+
+        allHref = hxs.xpath('//a/@href').extract()
+
+        for link in allHref:
+            if link.lower().startswith(startStrings):
+                files.append(link)
+        
+        #去重
+        #func = lambda x,y:x if y in x else x + [y]
+
+        #reduce(func, [[], ] + files)
+
+        files = list(set(files))
+
         passwords = []
         if len(showhides.extract()) > 0:
             hideTexts = showhides.xpath('text()').extract()
@@ -145,19 +195,18 @@ class BT49Spider(CrawlSpider):
             threadModel["passwords"] = passwords
 
         if len(files) > 0:
-            print '-------------breadCrumbs---------------'
+            logging.info('-------------breadCrumbs---------------')
             for breadCrumb in breadCrumbs:
-                print breadCrumb
-            print '-------------files---------------'
+                logging.info(breadCrumb)
+            logging.info('-------------files---------------')
             threadModel["files"] = files
             for file in files:
                 if file.strip().startswith('http://www.87lou.com/forum.php?mod=attachment'):
                     yield Request(file, meta={'thread': thread}, callback=self.download)
                     pass
-                print file
+                logging.info(file)
 
-        print '############################# End #####################################'
-        print ''
+        logging.info('############################# End #####################################')
         yield threadModel
 
     def download(self, response):
@@ -167,6 +216,7 @@ class BT49Spider(CrawlSpider):
         pattern = re.compile(r'filename="(.+)"')
         filename = pattern.findall(codecs.decode(attachment, 'gbk'))[0]
         threadFile['fileName'] = filename
+        threadFile['url'] = response.url
         threadFile['fileString'] = response.body
         return threadFile
         #filepath = '%s/%s' % (self.settings['DIR_PATH'],filename)

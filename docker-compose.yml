@@ -1,0 +1,16 @@
+mongo:
+  image: mongo
+  ports:
+    - "29017:27017"
+  restart: always
+
+scrapyd:
+  image: bt49_scrapyd:v1
+  ports:
+    - "6800:6800"
+  volumes:
+    - ./data:/var/lib/scrapyd
+    - /usr/local/lib/python2.7/dist-packages
+  restart: always
+  links:
+    - mongo:mongodb

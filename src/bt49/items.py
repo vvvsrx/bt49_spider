@@ -19,5 +19,6 @@ class ThreadItem(Item):
 
 class ThreadFile(Item):
     threadId = Field()
+    url = Field()
     fileName = Field()
     fileString = Field()

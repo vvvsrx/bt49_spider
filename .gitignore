@@ -69,3 +69,4 @@ target/
 #vs
 .vs/
 *.user
+data/
