@@ -235,17 +235,11 @@ class BT49Spider(CrawlSpider):
         logging.info('File name:')
         logging.info(filename)
 
-        blackExt = ('png','jpg','jpeg','gif')
-        if not filename.strip().lower().endswith(blackExt) or filename is None or filename == '':
+        blackExt = ('.png','.jpg','.jpeg','.gif')
+        if filename.strip().lower().endswith(blackExt) or filename is None or filename == '':
             return
-        threadFile['fileName'] = filename
+        threadFile['fileName'] = filename.encode('utf-8', 'replace')
         threadFile['url'] = response.url
-        
-        logging.info('Chardet result(response.body):')
-        logging.info(chardet.detect(response.body))
-        logging.info('UnicodeDammit result(response.body):')
-        logging.info(UnicodeDammit(response.body).original_encoding)
-
         threadFile['fileString'] = response.body
         return threadFile
         #filepath = '%s/%s' % (self.settings['DIR_PATH'],filename)

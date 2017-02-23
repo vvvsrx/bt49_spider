@@ -9,6 +9,7 @@ from __future__ import unicode_literals
 import pymongo
 from scrapy.conf import settings
 from bson.binary import Binary
+import logging
 
 
 class Bt49Pipeline(object):
@@ -51,6 +52,7 @@ class MongoDBPipeline(object):
         else:
             self.collection.insert_one(itemDic)
 
+        logging.info('item done')
         return item
 
 
