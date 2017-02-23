@@ -30,7 +30,9 @@ RUN set -xe \
                           zlib1g \
                           zlib1g-dev \
     && curl -sSL https://bootstrap.pypa.io/get-pip.py | python \
-    && pip install git+https://github.com/scrapy/scrapy.git \
+    && pip install git+https://github.com/chardet/chardet.git \
+                   beautifulsoup4 \
+                   git+https://github.com/scrapy/.git \
                    git+https://github.com/scrapy/scrapyd.git \
                    git+https://github.com/scrapy/scrapyd-client.git \
                    git+https://github.com/scrapinghub/scrapy-splash.git \

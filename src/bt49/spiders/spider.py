@@ -15,6 +15,8 @@ import os
 from os.path import dirname
 from bt49.items import *
 import logging
+import chardet
+from bs4 import UnicodeDammit
 
 
 path = dirname(dirname(dirname(os.path.abspath(os.path.dirname(__file__)))))
@@ -94,8 +96,8 @@ class BT49Spider(CrawlSpider):
 
         #print 'urls'
         #print urls
-        pattern = re.compile('http://www.87lou.com/thread-\d+-1-1.html')
-        pattern2 = re.compile('http://www.87lou.com/forum-\d*-\d*.html')
+        pattern = re.compile('http://www.87lou.com/thread-\d+-1-\d+.html')
+        pattern2 = re.compile('http://www.87lou.com/forum-\d+-\d+.html')
 
         for url in urls:
             m = pattern.match(url)
@@ -140,6 +142,7 @@ class BT49Spider(CrawlSpider):
         #    if f == 'javascript:;':
         #        del files[i]
         
+        hideTexts = showhides.xpath('text()').extract()
 
         for i in range(len(files)-1, -1, -1):
             if files[i] == 'javascript:;':
@@ -147,8 +150,8 @@ class BT49Spider(CrawlSpider):
 
         if len(files) > 0:
             pass
-        elif len(showhides.extract()) > 0:
-            hideText = showhides.xpath('text()').extract()[0].strip()
+        elif len(showhides.extract()) > 0 and len(hideTexts) > 0:
+            hideText = hideTexts[0].strip()
             if hideText.startswith('thunder') or hideText.startswith('ed2k') or hideText.startswith('magnet'):
                 files.append(hideText)
         else:
@@ -167,8 +170,7 @@ class BT49Spider(CrawlSpider):
                                 files.append(linkTag.xpath(
                                     '@href').extract()[0])
 
-        #找所有的link
-        startStrings = ('thunder','ed2k','magnet','magnet','https://pan.baidu.com','http://pan.baidu.com','http://www.87lou.com/forum.php?mod=attachment')
+        startStrings = ('thunder','ed2k','magnet','magnet','https://pan.baidu.com','http://pan.baidu.com','http://www.87lou.com/forum.php?mod=attachment','http://duwude.ctfile.com')
 
         allHref = hxs.xpath('//a/@href').extract()
 
@@ -176,7 +178,6 @@ class BT49Spider(CrawlSpider):
             if link.lower().startswith(startStrings):
                 files.append(link)
         
-        #去重
         #func = lambda x,y:x if y in x else x + [y]
 
         #reduce(func, [[], ] + files)
@@ -210,13 +211,41 @@ class BT49Spider(CrawlSpider):
         yield threadModel
 
     def download(self, response):
+        logging.info('Start download ' + response.url)
         threadFile = ThreadFile()
         threadFile['threadId'] = response.meta['thread']
         attachment = response.headers['Content-Disposition']
+        logging.info('Chardet result(attachment):')
+        logging.info(chardet.detect(attachment))
+        logging.info('UnicodeDammit result(attachment):')
+        dammit = UnicodeDammit(attachment)
+        logging.info(dammit.original_encoding)
         pattern = re.compile(r'filename="(.+)"')
+
+        #fileString = ''
+        #chardetResult = chardet.detect(attachment)
+        #if chardetResult['confidence'] < 0.7:
+        #    dammit = UnicodeDammit(attachment)
+        #    fileString = UnicodeDammit(attachment).unicode_markup
+        #else:
+        #    fileString = attachment.decode(chardetResult['encoding'], 'replace') #codecs.decode(attachment, chardetResult['encoding'])
+
+        #fileString = fileString.encode('utf-8', 'replace')
         filename = pattern.findall(codecs.decode(attachment, 'gbk'))[0]
+        logging.info('File name:')
+        logging.info(filename)
+
+        blackExt = ('png','jpg','jpeg','gif')
+        if not filename.strip().lower().endswith(blackExt) or filename is None or filename == '':
+            return
         threadFile['fileName'] = filename
         threadFile['url'] = response.url
+        
+        logging.info('Chardet result(response.body):')
+        logging.info(chardet.detect(response.body))
+        logging.info('UnicodeDammit result(response.body):')
+        logging.info(UnicodeDammit(response.body).original_encoding)
+
         threadFile['fileString'] = response.body
         return threadFile
         #filepath = '%s/%s' % (self.settings['DIR_PATH'],filename)
